@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Full Body Tracker</title>
+    <style>
+        :root {
+            --bg: #0f1115;
+            --card: #181b22;
+            --card-hover: #21252f;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --success: #10b981;
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border: #2a2f3a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 16px;
+            padding-bottom: 90px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .badge {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Таймер отдыха */
+        .timer-bar {
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            background: rgba(24, 27, 34, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        .timer-display {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+        }
+
+        .timer-controls button {
+            background: var(--card-hover);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-left: 6px;
+        }
+
+        .timer-controls button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* Карточка упражнения */
+        .exercise-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .exercise-card.completed {
+            border-color: var(--success);
+            opacity: 0.85;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .ex-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .ex-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .btn-anim {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* Зона анимации */
+        .anim-box {
+            display: none;
+            margin-top: 14px;
+            padding: 14px;
+            background: #12141a;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .anim-box.open {
+            display: block;
+        }
+
+        .anim-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        /* Подходы */
+        .sets-grid {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .set-btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 10px 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .set-btn.done {
+            background: var(--success);
+            border-color: var(--success);
+            color: #000;
+        }
+
+        /* Кнопка добавления и сброса */
+        .actions-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .btn-primary {
+            flex: 2;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .btn-reset {
+            flex: 1;
+            background: var(--card);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Модальное окно добавления */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 16px;
+            font-size: 1.2rem;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        /* CSS Анимации для SVG */
+        svg {
+            width: 140px;
+            height: 120px;
+        }
+
+        @keyframes squatAnim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(28px); }
+        }
+        .anim-squat .body-group { animation: squatAnim 2.5s infinite ease-in-out; }
+
+        @keyframes legPressAnim {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-22px, 15px); }
+        }
+        .anim-legpress .sled { animation: legPressAnim 2.5s infinite ease-in-out; }
+
+        @keyframes pulldownAnim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(35px); }
+        }
+        .anim-pulldown .bar { animation: pulldownAnim 2.5s infinite ease-in-out; }
+
+        @keyframes pressAnim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+        }
+        .anim-press .weights { animation: pressAnim 2.2s infinite ease-in-out; }
+
+        @keyframes plankAnim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .anim-plank .core { animation: plankAnim 3s infinite ease-in-out; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Full Body План</h1>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Базовая силовая тренировка</span>
+        </div>
+        <div class="badge" id="progressBadge">0 / 5</div>
+    </header>
+
+    <!-- Таймер отдыха -->
+    <div class="timer-bar">
+        <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Таймер отдыха</div>
+            <div class="timer-display" id="timerDisplay">01:30</div>
+        </div>
+        <div class="timer-controls">
+            <button onclick="startTimer(60)">1:00</button>
+            <button onclick="startTimer(90)">1:30</button>
+            <button onclick="startTimer(120)">2:00</button>
+            <button onclick="stopTimer()" style="color: #ef4444;">Стоп</button>
+        </div>
+    </div>
+
+    <!-- Список упражнений -->
+    <div id="workoutList"></div>
+
+    <div class="actions-footer">
+        <button class="btn-primary" onclick="openModal()">+ Добавить упражнение</button>
+        <button class="btn-reset" onclick="resetProgress()">Сброс</button>
+    </div>
+
+    <!-- Модалка добавления -->
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <h2>Новое упражнение</h2>
+            <div class="input-group">
+                <label>Название</label>
+                <input type="text" id="newTitle" placeholder="Например: Жим гантелей лежа">
+            </div>
+            <div class="input-group">
+                <label>Подходы × Повторения / Вес</label>
+                <input type="text" id="newMeta" placeholder="Например: 3 подхода × 12 повт.">
+            </div>
+            <div class="input-group">
+                <label>Количество подходов (кнопок)</label>
+                <input type="number" id="newSets" value="3" min="1" max="8">
+            </div>
+            <div class="input-group">
+                <label>Тип анимации</label>
+                <select id="newAnimType">
+                    <option value="squat">Приседания / Низ тела</option>
+                    <option value="legpress">Жим ногами / Платформа</option>
+                    <option value="pulldown">Тяга верхнего блока / Спина</option>
+                    <option value="press">Жим вверх или от груди</option>
+                    <option value="plank">Планка / Кор</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Техника выполнения</label>
+                <textarea id="newDesc" rows="2" placeholder="Краткая памятка по технике..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 16px;">
+                <button class="btn-primary" onclick="addExercise()">Сохранить</button>
+                <button class="btn-reset" onclick="closeModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Векторные анимации
+        const animations = {
+            squat: `
+                <svg class="anim-squat" viewBox="0 0 120 120">
+                    <line x1="20" y1="105" x2="100" y2="105" stroke="#4b5563" stroke-width="3" stroke-linecap="round"/>
+                    <g class="body-group">
+                        <circle cx="60" cy="25" r="10" fill="#3b82f6"/>
+                        <line x1="35" y1="38" x2="85" y2="38" stroke="#f3f4f6" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="32" cy="38" r="6" fill="#9ca3af"/>
+                        <circle cx="88" cy="38" r="6" fill="#9ca3af"/>
+                        <line x1="60" y1="35" x2="60" y2="68" stroke="#3b82f6" stroke-width="5" stroke-linecap="round"/>
+                    </g>
+                    <polyline points="60,68 45,86 48,105" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="60,68 75,86 72,105" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>`,
+            legpress: `
+                <svg class="anim-legpress" viewBox="0 0 120 120">
+                    <!-- Скамья -->
+                    <polyline points="25,65 45,95 95,95" fill="none" stroke="#4b5563" stroke-width="5" stroke-linecap="round"/>
+                    <!-- Атлет -->
+                    <circle cx="28" cy="52" r="8" fill="#3b82f6"/>
+                    <line x1="32" y1="60" x2="48" y2="88" stroke="#3b82f6" stroke-width="5" stroke-linecap="round"/>
+                    <!-- Ноги и платформа -->
+                    <g class="sled">
+                        <line x1="48" y1="88" x2="85" y2="55" stroke="#60a5fa" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="75" y1="40" x2="95" y2="65" stroke="#f3f4f6" stroke-width="6" stroke-linecap="round"/>
+                        <circle cx="88" cy="48" r="8" fill="#9ca3af"/>
+                    </g>
+                </svg>`,
+            pulldown: `
+                <svg class="anim-pulldown" viewBox="0 0 120 120">
+                    <!-- Рама -->
+                    <line x1="60" y1="10" x2="60" y2="45" stroke="#4b5563" stroke-width="2" stroke-dasharray="3,3"/>
+                    <!-- Скамья и атлет -->
+                    <line x1="40" y1="95" x2="80" y2="95" stroke="#4b5563" stroke-width="4"/>
+                    <circle cx="60" cy="58" r="8" fill="#3b82f6"/>
+                    <line x1="60" y1="66" x2="60" y2="95" stroke="#3b82f6" stroke-width="5" stroke-linecap="round"/>
+                    <!-- Рукоять -->
+                    <g class="bar">
+                        <line x1="30" y1="25" x2="90" y2="25" stroke="#f3f4f6" stroke-width="4" stroke-linecap="round"/>
+                        <polyline points="35,25 45,55 60,68" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>
+                        <polyline points="85,25 75,55 60,68" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                </svg>`,
+            press: `
+                <svg class="anim-press" viewBox="0 0 120 120">
+                    <line x1="40" y1="100" x2="80" y2="100" stroke="#4b5563" stroke-width="4"/>
+                    <circle cx="60" cy="55" r="8" fill="#3b82f6"/>
+                    <line x1="60" y1="63" x2="60" y2="100" stroke="#3b82f6" stroke-width="5" stroke-linecap="round"/>
+                    <g class="weights">
+                        <line x1="32" y1="45" x2="88" y2="45" stroke="#f3f4f6" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="30" cy="45" r="6" fill="#9ca3af"/>
+                        <circle cx="90" cy="45" r="6" fill="#9ca3af"/>
+                        <polyline points="38,45 45,68 60,68" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>
+                        <polyline points="82,45 75,68 60,68" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                </svg>`,
+            plank: `
+                <svg class="anim-plank" viewBox="0 0 120 120">
+                    <line x1="15" y1="90" x2="105" y2="90" stroke="#4b5563" stroke-width="3" stroke-linecap="round"/>
+                    <g class="core">
+                        <circle cx="28" cy="68" r="7" fill="#3b82f6"/>
+                        <polyline points="32,74 32,88 45,88" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round"/>
+                        <line x1="34" y1="73" x2="95" y2="88" stroke="#3b82f6" stroke-width="5" stroke-linecap="round"/>
+                    </g>
+                </svg>`
+        };
+
+        // Дефолтный план Full Body
+        const defaultPlan = [
+            {
+                id: 1,
+                title: "Приседания со штангой / гантелями",
+                meta: "4 подхода × 10-12 повт.",
+                sets: [false, false, false, false],
+                anim: "squat",
+                desc: "Спина прямая, взгляд вперед. Отводи таз назад, колени движутся по направлению носков. Опускайся до параллели бедер с полом."
+            },
+            {
+                id: 2,
+                title: "Жим ногами в тренажере",
+                meta: "3 подхода × 12-15 повт.",
+                sets: [false, false, false],
+                anim: "legpress",
+                desc: "Поясница плотно прижата к спинке тренажера. В верхней точке не выпрямляй колени до конца (оставляй мягкий угол)."
+            },
+            {
+                id: 3,
+                title: "Тяга верхнего блока к груди",
+                meta: "4 подхода × 10-12 повт.",
+                sets: [false, false, false, false],
+                anim: "pulldown",
+                desc: "Сведи лопатки и опусти плечи вниз перед началом тяги. Тяни рукоять к верхней части груди, локти направлены вниз."
+            },
+            {
+                id: 4,
+                title: "Жим штанги / гантелей на скамье",
+                meta: "3 подхода × 10-12 повт.",
+                sets: [false, false, false],
+                anim: "press",
+                desc: "Лопатки сведены, грудь раскрыта. Опускай вес подконтрольно на середину груди, выжимайте мощно на выдохе."
+            },
+            {
+                id: 5,
+                title: "Планка на локтях",
+                meta: "3 подхода × 45-60 сек.",
+                sets: [false, false, false],
+                anim: "plank",
+                desc: "Тело образует прямую линию от макушки до пяток. Напряги пресс и ягодицы, не прогибай поясницу."
+            }
+        ];
+
+        let plan = JSON.parse(localStorage.getItem('fb_workout_plan')) || defaultPlan;
+
+        function savePlan() {
+            localStorage.setItem('fb_workout_plan', JSON.stringify(plan));
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('workoutList');
+            list.innerHTML = '';
+            let completedEx = 0;
+
+            plan.forEach((ex, exIndex) => {
+                const isAllDone = ex.sets.every(s => s === true);
+                if (isAllDone) completedEx++;
+
+                const card = document.createElement('div');
+                card.className = `exercise-card ${isAllDone ? 'completed' : ''}`;
+
+                let setsHtml = ex.sets.map((done, setIndex) => `
+                    <button class="set-btn ${done ? 'done' : ''}" onclick="toggleSet(${exIndex}, ${setIndex})">
+                        ${done ? '✓' : `Сет ${setIndex + 1}`}
+                    </button>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div>
+                            <div class="ex-title">${ex.title}</div>
+                            <div class="ex-meta">${ex.meta}</div>
+                        </div>
+                        <button class="btn-anim" onclick="toggleAnim(${ex.id})">Техника ▶</button>
+                    </div>
+                    <div class="anim-box" id="anim-${ex.id}">
+                        ${animations[ex.anim] || animations.squat}
+                        <div class="anim-desc">${ex.desc}</div>
+                        <div style="text-align: right; margin-top: 8px;">
+                            <button onclick="deleteExercise(${exIndex})" style="background:none; border:none; color:#ef4444; font-size:0.75rem; cursor:pointer;">Удалить упражнение</button>
+                        </div>
+                    </div>
+                    <div class="sets-grid">
+                        ${setsHtml}
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            document.getElementById('progressBadge').innerText = `${completedEx} / ${plan.length}`;
+        }
+
+        function toggleSet(exIndex, setIndex) {
+            plan[exIndex].sets[setIndex] = !plan[exIndex].sets[setIndex];
+            // Автозапуск таймера на 90 сек, если подход выполнен
+            if (plan[exIndex].sets[setIndex]) {
+                startTimer(90);
+            }
+            savePlan();
+        }
+
+        function toggleAnim(id) {
+            const box = document.getElementById(`anim-${id}`);
+            box.classList.toggle('open');
+        }
+
+        function resetProgress() {
+            if (!confirm('Сбросить все выполненные подходы на сегодня?')) return;
+            plan.forEach(ex => ex.sets = ex.sets.map(() => false));
+            stopTimer();
+            savePlan();
+        }
+
+        function deleteExercise(index) {
+            if (!confirm('Удалить это упражнение из плана?')) return;
+            plan.splice(index, 1);
+            savePlan();
+        }
+
+        // Модалка
+        function openModal() { document.getElementById('addModal').classList.add('open'); }
+        function closeModal() { document.getElementById('addModal').classList.remove('open'); }
+
+        function addExercise() {
+            const title = document.getElementById('newTitle').value.trim();
+            const meta = document.getElementById('newMeta').value.trim() || '3 подхода × 12 повт.';
+            const setsCount = parseInt(document.getElementById('newSets').value) || 3;
+            const anim = document.getElementById('newAnimType').value;
+            const desc = document.getElementById('newDesc').value.trim() || 'Следи за техникой и дыханием.';
+
+            if (!title) return alert('Введи название упражнения');
+
+            plan.push({
+                id: Date.now(),
+                title,
+                meta,
+                sets: Array(setsCount).fill(false),
+                anim,
+                desc
+            });
+
+            document.getElementById('newTitle').value = '';
+            document.getElementById('newMeta').value = '';
+            document.getElementById('newDesc').value = '';
+            closeModal();
+            savePlan();
+        }
+
+        // Логика таймера
+        let timerInterval;
+        let timeLeft = 90;
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const secs = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('timerDisplay').innerText = `${mins}:${secs}`;
+        }
+
+        function startTimer(seconds) {
+            clearInterval(timerInterval);
+            timeLeft = seconds;
+            updateTimerDisplay();
+            document.getElementById('timerDisplay').style.color = '#3b82f6';
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('timerDisplay').style.color = '#10b981';
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 90;
+            updateTimerDisplay();
+            document.getElementById('timerDisplay').style.color = '#f3f4f6';
+        }
+
+        render();
+    </script>
+</body>
+</html>
